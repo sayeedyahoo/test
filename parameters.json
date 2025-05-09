@@ -1,0 +1,18 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "workflows_logic_nrcan_oee_eve_prod_name": {
+            "value": null
+        },
+        "workflows_logic_nrcan_oee_incentive_calculators_prod_externalid": {
+            "value": null
+        },
+        "workflows_logic_nrcan_oee_file_management_prod_externalid": {
+            "value": null
+        },
+        "connections_keyvault_1_externalid": {
+            "value": null
+        }
+    }
+}
