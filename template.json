@@ -2,20 +2,20 @@
     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
-        "workflows_logic_nrcan_oee_eve_prod_name": {
-            "defaultValue": "logic-nrcan-oee-eve-prod",
+        "workflows_logic_nrcan_oee_eve_dev_name": {
+            "defaultValue": "logic-nrcan-oee-eve-dev",
             "type": "String"
         },
-        "workflows_logic_nrcan_oee_incentive_calculators_prod_externalid": {
-            "defaultValue": "/subscriptions/a5df90be-e869-4159-83c2-db1ae389dce3/resourceGroups/nrcan-prod-oee-hd-shared-ca-central/providers/Microsoft.Logic/workflows/logic-nrcan-oee-incentive-calculators-prod",
+        "workflows_logic_nrcan_oee_incentive_calculators_dev_externalid": {
+            "defaultValue": "/subscriptions/54e15e2b-0be1-4d7d-b9d2-bbd6ffcc370a/resourceGroups/nrcan-dev-oee-hd-shared-ca-central/providers/Microsoft.Logic/workflows/logic-nrcan-oee-incentive-calculators-dev",
             "type": "String"
         },
-        "workflows_logic_nrcan_oee_file_management_prod_externalid": {
-            "defaultValue": "/subscriptions/a5df90be-e869-4159-83c2-db1ae389dce3/resourceGroups/nrcan-prod-oee-hd-shared-ca-central/providers/Microsoft.Logic/workflows/logic-nrcan-oee-file-management-prod",
+        "workflows_logic_nrcan_oee_file_management_dev_externalid": {
+            "defaultValue": "/subscriptions/54e15e2b-0be1-4d7d-b9d2-bbd6ffcc370a/resourceGroups/nrcan-dev-oee-hd-shared-ca-central/providers/Microsoft.Logic/workflows/logic-nrcan-oee-file-management-dev",
             "type": "String"
         },
-        "connections_keyvault_1_externalid": {
-            "defaultValue": "/subscriptions/a5df90be-e869-4159-83c2-db1ae389dce3/resourceGroups/nrcan-prod-oee-hd-shared-ca-central/providers/Microsoft.Web/connections/keyvault-1",
+        "connections_keyvault_externalid": {
+            "defaultValue": "/subscriptions/54e15e2b-0be1-4d7d-b9d2-bbd6ffcc370a/resourceGroups/nrcan-dev-oee-hd-shared-ca-central/providers/Microsoft.Web/connections/keyvault",
             "type": "String"
         }
     },
@@ -24,12 +24,10 @@
         {
             "type": "Microsoft.Logic/workflows",
             "apiVersion": "2017-07-01",
-            "name": "[parameters('workflows_logic_nrcan_oee_eve_prod_name')]",
+            "name": "[parameters('workflows_logic_nrcan_oee_eve_dev_name')]",
             "location": "canadacentral",
             "tags": {
-                "Service Tag": "LogicApps",
-                "CreatedBy": "unknown",
-                "CreatedOnDate": "Before 2024-04-02"
+                "nrcan-oee-eve-dev": "nrcan-oee-eve-dev"
             },
             "identity": {
                 "type": "SystemAssigned"
@@ -45,27 +43,27 @@
                             "type": "Object"
                         },
                         "Home Owner API": {
-                            "defaultValue": "homeowner-nrcan-oee-hd-prod",
+                            "defaultValue": "homeowner-nrcan-oee-hd-dev",
                             "type": "String"
                         },
                         "Incentive Calculator Function": {
-                            "defaultValue": "gh-nrcan-oee-hd-prod",
+                            "defaultValue": "gh-nrcan-oee-hd-dev",
                             "type": "String"
                         },
                         "ManuEval Function Paramter": {
-                            "defaultValue": "evemanueval-nrcan-oee-hd-prod",
+                            "defaultValue": "evemanueval-nrcan-oee-hd-dev",
                             "type": "String"
                         },
                         "Rule Function Name": {
-                            "defaultValue": "eve-nrcan-oee-hd-prod",
+                            "defaultValue": "eve-nrcan-oee-hd-dev",
                             "type": "String"
                         },
                         "SF Link API Key": {
-                            "defaultValue": "825d5960f919473888b100dd7535bb5d",
+                            "defaultValue": "ad8bc91f4fb14260bbb28824697794cc",
                             "type": "String"
                         },
                         "SF Linking API URL": {
-                            "defaultValue": "https://apim-nrcan-oee-hd-prod.azure-api.net/evaluations/link",
+                            "defaultValue": "https://apim-nrcan-oee-hd-dev.azure-api.net/evaluations/link",
                             "type": "String"
                         }
                     },
@@ -174,7 +172,7 @@
                                         "retryPolicy": {
                                             "type": "none"
                                         },
-                                        "uri": "https://@{parameters('Home Owner API')}.azurewebsites.net/api/HomeOwners/@{split(triggerBody()?['evaluationFileName'],'.')[0]}?code=@{body('homeowner-nrcan-oee-hd-prod')?['value']}"
+                                        "uri": "https://@{parameters('Home Owner API')}.azurewebsites.net/api/HomeOwners/@{split(triggerBody()?['evaluationFileName'],'.')[0]}?code=@{body('homeowner-nrcan-oee-hd-dev')?['value']}"
                                     }
                                 }
                             },
@@ -213,25 +211,12 @@
                             },
                             "type": "If"
                         },
-                        "Full_Response": {
+                        "Initialize_Application_Number_String": {
                             "runAfter": {
-                                "Respond_on_if_AutoTrigger_is_False": [
+                                "Is_Auto_Trigger": [
                                     "Succeeded"
                                 ]
                             },
-                            "type": "Response",
-                            "kind": "Http",
-                            "inputs": {
-                                "body": "@variables('Response')",
-                                "headers": {
-                                    "Content-Type": "application/json",
-                                    "Language": "@{triggerOutputs()['headers']['Language']}"
-                                },
-                                "statusCode": 201
-                            }
-                        },
-                        "Initialize_Application_Number_String": {
-                            "runAfter": {},
                             "type": "InitializeVariable",
                             "inputs": {
                                 "variables": [
@@ -243,7 +228,11 @@
                             }
                         },
                         "Initialize_Incentive_Recommendations_Response_Array": {
-                            "runAfter": {},
+                            "runAfter": {
+                                "Is_Auto_Trigger": [
+                                    "Succeeded"
+                                ]
+                            },
                             "type": "InitializeVariable",
                             "inputs": {
                                 "variables": [
@@ -255,7 +244,11 @@
                             }
                         },
                         "Initialize_Incentive_Results_Response_Array": {
-                            "runAfter": {},
+                            "runAfter": {
+                                "Is_Auto_Trigger": [
+                                    "Succeeded"
+                                ]
+                            },
                             "type": "InitializeVariable",
                             "inputs": {
                                 "variables": [
@@ -267,7 +260,11 @@
                             }
                         },
                         "Initialize_IsApplicationCreation_Boolean": {
-                            "runAfter": {},
+                            "runAfter": {
+                                "Is_Auto_Trigger": [
+                                    "Succeeded"
+                                ]
+                            },
                             "type": "InitializeVariable",
                             "inputs": {
                                 "variables": [
@@ -280,7 +277,11 @@
                             }
                         },
                         "Initialize_IsEE_Boolean": {
-                            "runAfter": {},
+                            "runAfter": {
+                                "Is_Auto_Trigger": [
+                                    "Succeeded"
+                                ]
+                            },
                             "type": "InitializeVariable",
                             "inputs": {
                                 "variables": [
@@ -293,7 +294,11 @@
                             }
                         },
                         "Initialize_IsGH_Boolean": {
-                            "runAfter": {},
+                            "runAfter": {
+                                "Is_Auto_Trigger": [
+                                    "Succeeded"
+                                ]
+                            },
                             "type": "InitializeVariable",
                             "inputs": {
                                 "variables": [
@@ -306,7 +311,11 @@
                             }
                         },
                         "Initialize_Response": {
-                            "runAfter": {},
+                            "runAfter": {
+                                "Is_Auto_Trigger": [
+                                    "Succeeded"
+                                ]
+                            },
                             "type": "InitializeVariable",
                             "inputs": {
                                 "variables": [
@@ -318,7 +327,11 @@
                             }
                         },
                         "Initialize_Validation_URL_String": {
-                            "runAfter": {},
+                            "runAfter": {
+                                "Is_Auto_Trigger": [
+                                    "Succeeded"
+                                ]
+                            },
                             "type": "InitializeVariable",
                             "inputs": {
                                 "variables": [
@@ -329,7 +342,32 @@
                                 ]
                             }
                         },
-                        "Is_Draft": {
+                        "Is_Auto_Trigger": {
+                            "actions": {
+                                "201_Async_Response": {
+                                    "runAfter": {},
+                                    "type": "Response",
+                                    "kind": "Http",
+                                    "inputs": {
+                                        "body": {},
+                                        "statusCode": 201
+                                    }
+                                }
+                            },
+                            "runAfter": {},
+                            "expression": {
+                                "and": [
+                                    {
+                                        "equals": [
+                                            "@triggerBody()?['autoTrigger']",
+                                            "@true"
+                                        ]
+                                    }
+                                ]
+                            },
+                            "type": "If"
+                        },
+                        "Is_Draft_and_Not_P_OR_N": {
                             "actions": {
                                 "Is_Application_Creation": {
                                     "actions": {
@@ -338,7 +376,7 @@
                                             "type": "SetVariable",
                                             "inputs": {
                                                 "name": "IsApplicationCreation",
-                                                "value": "@false"
+                                                "value": "@true"
                                             }
                                         }
                                     },
@@ -480,19 +518,14 @@
                                                                         "Succeeded"
                                                                     ]
                                                                 },
-                                                                "type": "Foreach",
-                                                                "runtimeConfiguration": {
-                                                                    "concurrency": {
-                                                                        "repetitions": 1
-                                                                    }
-                                                                }
+                                                                "type": "Foreach"
                                                             },
                                                             "Get_File_Details": {
                                                                 "runAfter": {},
                                                                 "type": "Http",
                                                                 "inputs": {
                                                                     "method": "GET",
-                                                                    "uri": "https://@{parameters('ManuEval Function Paramter')}.azurewebsites.net/api/EvaluationResult/@{body('Call_EVE_Validation_Function')['data']['evaluation']['filenumber']}?code=@{body('evemanueval-nrcan-oee-hd-prod')?['value']}"
+                                                                    "uri": "https://@{parameters('ManuEval Function Paramter')}.azurewebsites.net/api/EvaluationResult/@{body('Call_EVE_Validation_Function')['data']['evaluation']['filenumber']}?code=@{body('evemanueval-nrcan-oee-hd-dev')?['value']}"
                                                                 }
                                                             }
                                                         },
@@ -548,29 +581,11 @@
                                                 }
                                             },
                                             "expression": {
-                                                "or": [
+                                                "and": [
                                                     {
                                                         "equals": [
                                                             "@variables('IsGH')",
                                                             "@false"
-                                                        ]
-                                                    },
-                                                    {
-                                                        "and": [
-                                                            {
-                                                                "greater": [
-                                                                    "@length(trim(body('Call_EVE_Validation_Function')['data']['evaluation']['authid']))",
-                                                                    8
-                                                                ]
-                                                            },
-                                                            {
-                                                                "not": {
-                                                                    "startsWith": [
-                                                                        "@body('Call_EVE_Validation_Function')['data']['evaluation']['authid']",
-                                                                        "AP"
-                                                                    ]
-                                                                }
-                                                            }
                                                         ]
                                                     }
                                                 ]
@@ -599,7 +614,7 @@
                                                                         "applicationId": "@if(greater(length(trim(body('Call_EVE_Validation_Function')['data']['evaluation']['authid'])), 8), '', trim(body('Call_EVE_Validation_Function')['data']['evaluation']['authid']))",
                                                                         "entrydate": "@body('Call_EVE_Validation_Function')['data']['evaluation']['entrydate']",
                                                                         "evaluationIncentiveRecommendations": "@body('Call_EVE_Validation_Function')['data']['evaluationIncentiveRecommendations']",
-                                                                        "evaluationIncentiveResults": "@body('logic-nrcan-oee-incentive-calculators-prod')['data']",
+                                                                        "evaluationIncentiveResults": "@body('logic-nrcan-oee-incentive-calculators-dev')['data']",
                                                                         "homeOwnerAddress": "@body('Call_EVE_Validation_Function')['data']['evaluation']['clientaddr']",
                                                                         "homeOwnerCity": "@body('Call_EVE_Validation_Function')['data']['evaluation']['clientcity']",
                                                                         "homeOwnerEmail": "",
@@ -669,18 +684,6 @@
                                                                 "@variables('IsGH')",
                                                                 "@true"
                                                             ]
-                                                        },
-                                                        {
-                                                            "equals": [
-                                                                "@length(trim(body('Call_EVE_Validation_Function')['data']['evaluation']['authid']))",
-                                                                8
-                                                            ]
-                                                        },
-                                                        {
-                                                            "startsWith": [
-                                                                "@body('Call_EVE_Validation_Function')['data']['evaluation']['authid']",
-                                                                "AP"
-                                                            ]
                                                         }
                                                     ]
                                                 },
@@ -688,17 +691,17 @@
                                             },
                                             "Set_Incentive_Results": {
                                                 "runAfter": {
-                                                    "logic-nrcan-oee-incentive-calculators-prod": [
+                                                    "logic-nrcan-oee-incentive-calculators-dev": [
                                                         "Succeeded"
                                                     ]
                                                 },
                                                 "type": "SetVariable",
                                                 "inputs": {
                                                     "name": "IncentiveResults",
-                                                    "value": "@body('logic-nrcan-oee-incentive-calculators-prod')['data']"
+                                                    "value": "@body('logic-nrcan-oee-incentive-calculators-dev')['data']"
                                                 }
                                             },
-                                            "logic-nrcan-oee-incentive-calculators-prod": {
+                                            "logic-nrcan-oee-incentive-calculators-dev": {
                                                 "runAfter": {},
                                                 "type": "Workflow",
                                                 "inputs": {
@@ -710,7 +713,7 @@
                                                     "host": {
                                                         "triggerName": "manual",
                                                         "workflow": {
-                                                            "id": "[parameters('workflows_logic_nrcan_oee_incentive_calculators_prod_externalid')]"
+                                                            "id": "[parameters('workflows_logic_nrcan_oee_incentive_calculators_dev_externalid')]"
                                                         }
                                                     }
                                                 }
@@ -894,12 +897,6 @@
                                                     "@body('Call_EVE_Validation_Function')['data']['evaluation']['evaluationstatus']",
                                                     "Submitted"
                                                 ]
-                                            },
-                                            {
-                                                "equals": [
-                                                    "@body('Call_EVE_Validation_Function')['data']['evaluationstatus']",
-                                                    "Submitted"
-                                                ]
                                             }
                                         ]
                                     }
@@ -919,7 +916,7 @@
                                             "ProgramName": "@{body('Call_EVE_Validation_Function')['data']['Evaluation']['programName']}"
                                         },
                                         "method": "PATCH",
-                                        "uri": "https://@{parameters('ManuEval Function Paramter')}.azurewebsites.net/api/LinkToApplication?code=@{body('evemanueval-nrcan-oee-hd-prod')?['value']}"
+                                        "uri": "https://@{parameters('ManuEval Function Paramter')}.azurewebsites.net/api/LinkToApplication?code=@{body('evemanueval-nrcan-oee-hd-dev')?['value']}"
                                     }
                                 },
                                 "Link_Home_Owner_To_Application": {
@@ -936,12 +933,12 @@
                                             "TransactionChannel": "HOPortal"
                                         },
                                         "method": "PATCH",
-                                        "uri": "https://@{parameters('Home Owner API')}.azurewebsites.net/api/HomeOwners/LinkToApplication/@{split(triggerBody()?['evaluationFileName'],'.')[0]}/?code=@{body('homeowner-nrcan-oee-hd-prod')?['value']}"
+                                        "uri": "https://@{parameters('Home Owner API')}.azurewebsites.net/api/HomeOwners/LinkToApplication/@{split(triggerBody()?['evaluationFileName'],'.')[0]}/?code=@{body('homeowner-nrcan-oee-hd-dev')?['value']}"
                                     }
                                 }
                             },
                             "runAfter": {
-                                "Is_Draft": [
+                                "Is_Draft_and_Not_P_OR_N": [
                                     "Succeeded"
                                 ]
                             },
@@ -987,7 +984,7 @@
                                         "host": {
                                             "triggerName": "manual",
                                             "workflow": {
-                                                "id": "[parameters('workflows_logic_nrcan_oee_file_management_prod_externalid')]"
+                                                "id": "[parameters('workflows_logic_nrcan_oee_file_management_dev_externalid')]"
                                             }
                                         }
                                     }
@@ -995,9 +992,7 @@
                             },
                             "runAfter": {
                                 "Call_EVE_Validation_Function": [
-                                    "Succeeded",
-                                    "Failed",
-                                    "TimedOut"
+                                    "Succeeded"
                                 ]
                             },
                             "expression": {
@@ -1035,12 +1030,12 @@
                                             "Content-Type": "application/json"
                                         },
                                         "method": "PATCH",
-                                        "uri": "https://evemanueval-nrcan-oee-hd-prod.azurewebsites.net/api/LinkedEvaluationStatus?code=@{body('evemanueval-nrcan-oee-hd-prod')?['value']}"
+                                        "uri": "https://evemanueval-nrcan-oee-hd-dev.azurewebsites.net/api/LinkedEvaluationStatus?code=@{body('evemanueval-nrcan-oee-hd-dev')?['value']}"
                                     }
                                 }
                             },
                             "runAfter": {
-                                "Is_Draft": [
+                                "Is_Draft_and_Not_P_OR_N": [
                                     "Succeeded"
                                 ]
                             },
@@ -1092,12 +1087,12 @@
                                                     "Language": "@{triggerOutputs()['headers']['Language']}"
                                                 },
                                                 "method": "POST",
-                                                "uri": "https://@{parameters('Rule Function Name')}.azurewebsites.net/api/EVEUpdateAcceptedSubmission?code=@{body('eve-nrcan-oee-hd-prod')?['value']}"
+                                                "uri": "https://@{parameters('Rule Function Name')}.azurewebsites.net/api/EVEUpdateAcceptedSubmission?code=@{body('eve-nrcan-oee-hd-dev')?['value']}"
                                             }
                                         },
                                         "Is_E_File": {
                                             "actions": {
-                                                "logic-nrcan-oee-incentive-calculators-prod_Auto_Trigger": {
+                                                "logic-nrcan-oee-incentive-calculators-dev_Auto_Trigger": {
                                                     "runAfter": {},
                                                     "type": "Workflow",
                                                     "inputs": {
@@ -1109,7 +1104,7 @@
                                                         "host": {
                                                             "triggerName": "manual",
                                                             "workflow": {
-                                                                "id": "[parameters('workflows_logic_nrcan_oee_incentive_calculators_prod_externalid')]"
+                                                                "id": "[parameters('workflows_logic_nrcan_oee_incentive_calculators_dev_externalid')]"
                                                             }
                                                         }
                                                     }
@@ -1157,7 +1152,7 @@
                                                 "host": {
                                                     "triggerName": "manual",
                                                     "workflow": {
-                                                        "id": "[parameters('workflows_logic_nrcan_oee_file_management_prod_externalid')]"
+                                                        "id": "[parameters('workflows_logic_nrcan_oee_file_management_dev_externalid')]"
                                                     }
                                                 }
                                             }
@@ -1204,6 +1199,23 @@
                                     "Succeeded"
                                 ]
                             },
+                            "else": {
+                                "actions": {
+                                    "Full_Response": {
+                                        "runAfter": {},
+                                        "type": "Response",
+                                        "kind": "Http",
+                                        "inputs": {
+                                            "body": "@variables('Response')",
+                                            "headers": {
+                                                "Content-Type": "application/json",
+                                                "Language": "@{triggerOutputs()['headers']['Language']}"
+                                            },
+                                            "statusCode": 201
+                                        }
+                                    }
+                                }
+                            },
                             "expression": {
                                 "and": [
                                     {
@@ -1242,33 +1254,20 @@
                                 "Initialize_Validation_URL_String": [
                                     "Succeeded"
                                 ],
-                                "eve-nrcan-oee-hd-prod": [
+                                "eve-nrcan-oee-hd-dev": [
                                     "Succeeded"
                                 ],
-                                "evemanueval-nrcan-oee-hd-prod": [
+                                "evemanueval-nrcan-oee-hd-dev": [
                                     "Succeeded"
                                 ],
-                                "gh-nrcan-oee-hd-prod": [
+                                "gh-nrcan-oee-hd-dev": [
                                     "Succeeded"
                                 ],
-                                "homeowner-nrcan-oee-hd-prod": [
+                                "homeowner-nrcan-oee-hd-dev": [
                                     "Succeeded"
                                 ]
                             },
                             "cases": {
-                                "Case": {
-                                    "case": "SYNC",
-                                    "actions": {
-                                        "Set_Validation_URL_": {
-                                            "runAfter": {},
-                                            "type": "SetVariable",
-                                            "inputs": {
-                                                "name": "Validation URL",
-                                                "value": "https://@{parameters('Rule Function Name')}.azurewebsites.net/api/EVEUpdateSubmission?code=@{body('eve-nrcan-oee-hd-prod')?['value']}"
-                                            }
-                                        }
-                                    }
-                                },
                                 "Case_SubmissionType_I": {
                                     "case": "I",
                                     "actions": {
@@ -1277,7 +1276,7 @@
                                             "type": "SetVariable",
                                             "inputs": {
                                                 "name": "Validation URL",
-                                                "value": "https://@{parameters('Rule Function Name')}.azurewebsites.net/api/EVEInitialSubmission?code=@{body('eve-nrcan-oee-hd-prod')?['value']}"
+                                                "value": "https://@{parameters('Rule Function Name')}.azurewebsites.net/api/EVEInitialSubmission?code=@{body('eve-nrcan-oee-hd-dev')?['value']}"
                                             }
                                         }
                                     }
@@ -1290,7 +1289,7 @@
                                             "type": "SetVariable",
                                             "inputs": {
                                                 "name": "Validation URL",
-                                                "value": "https://@{parameters('Rule Function Name')}.azurewebsites.net/api/EVEUpdateAcceptedSubmission?code=@{body('eve-nrcan-oee-hd-prod')?['value']}"
+                                                "value": "https://@{parameters('Rule Function Name')}.azurewebsites.net/api/EVEUpdateAcceptedSubmission?code=@{body('eve-nrcan-oee-hd-dev')?['value']}"
                                             }
                                         }
                                     }
@@ -1303,7 +1302,7 @@
                                             "type": "SetVariable",
                                             "inputs": {
                                                 "name": "Validation URL",
-                                                "value": "https://@{parameters('Rule Function Name')}.azurewebsites.net/api/EVEInitialSubmission?code=@{body('eve-nrcan-oee-hd-prod')?['value']}"
+                                                "value": "https://@{parameters('Rule Function Name')}.azurewebsites.net/api/EVEInitialSubmission?code=@{body('eve-nrcan-oee-hd-dev')?['value']}"
                                             }
                                         }
                                     }
@@ -1316,7 +1315,7 @@
                                             "type": "SetVariable",
                                             "inputs": {
                                                 "name": "Validation URL",
-                                                "value": "https://@{parameters('ManuEval Function Paramter')}.azurewebsites.net/api/EVEUpdateAcceptedSubmission?code=@{body('evemanueval-nrcan-oee-hd-prod')?['value']}"
+                                                "value": "https://@{parameters('ManuEval Function Paramter')}.azurewebsites.net/api/EVEUpdateAcceptedSubmission?code=@{body('evemanueval-nrcan-oee-hd-dev')?['value']}"
                                             }
                                         }
                                     }
@@ -1329,7 +1328,7 @@
                                             "type": "SetVariable",
                                             "inputs": {
                                                 "name": "Validation URL",
-                                                "value": "https://@{parameters('ManuEval Function Paramter')}.azurewebsites.net/api/EVEMUpdateOverrideSubmission?code=@{body('evemanueval-nrcan-oee-hd-prod')?['value']}"
+                                                "value": "https://@{parameters('ManuEval Function Paramter')}.azurewebsites.net/api/EVEMUpdateOverrideSubmission?code=@{body('evemanueval-nrcan-oee-hd-dev')?['value']}"
                                             }
                                         }
                                     }
@@ -1342,7 +1341,7 @@
                                             "type": "SetVariable",
                                             "inputs": {
                                                 "name": "Validation URL",
-                                                "value": "https://@{parameters('ManuEval Function Paramter')}.azurewebsites.net/api/EVEMInitialSubmission?code=@{body('evemanueval-nrcan-oee-hd-prod')?['value']}"
+                                                "value": "https://@{parameters('ManuEval Function Paramter')}.azurewebsites.net/api/EVEMInitialSubmission?code=@{body('evemanueval-nrcan-oee-hd-dev')?['value']}"
                                             }
                                         }
                                     }
@@ -1355,7 +1354,7 @@
                                             "type": "SetVariable",
                                             "inputs": {
                                                 "name": "Validation URL",
-                                                "value": "https://@{parameters('ManuEval Function Paramter')}.azurewebsites.net/api/EVEUpdateSubmission?code=@{body('evemanueval-nrcan-oee-hd-prod')?['value']}"
+                                                "value": "https://@{parameters('ManuEval Function Paramter')}.azurewebsites.net/api/EVEUpdateSubmission?code=@{body('evemanueval-nrcan-oee-hd-dev')?['value']}"
                                             }
                                         }
                                     }
@@ -1368,7 +1367,7 @@
                                             "type": "SetVariable",
                                             "inputs": {
                                                 "name": "Validation URL",
-                                                "value": "https://@{parameters('Rule Function Name')}.azurewebsites.net/api/EVEUpdateSubmission?code=@{body('eve-nrcan-oee-hd-prod')?['value']}"
+                                                "value": "https://@{parameters('Rule Function Name')}.azurewebsites.net/api/EVEUpdateSubmission?code=@{body('eve-nrcan-oee-hd-dev')?['value']}"
                                             }
                                         }
                                     }
@@ -1380,8 +1379,12 @@
                             "expression": "@triggerBody()?['submissionType']",
                             "type": "Switch"
                         },
-                        "eve-nrcan-oee-hd-prod": {
-                            "runAfter": {},
+                        "eve-nrcan-oee-hd-dev": {
+                            "runAfter": {
+                                "Is_Auto_Trigger": [
+                                    "Succeeded"
+                                ]
+                            },
                             "type": "ApiConnection",
                             "inputs": {
                                 "host": {
@@ -1390,11 +1393,15 @@
                                     }
                                 },
                                 "method": "get",
-                                "path": "/secrets/@{encodeURIComponent('eve-nrcan-oee-hd-prod')}/value"
+                                "path": "/secrets/@{encodeURIComponent('eve-nrcan-oee-hd-dev')}/value"
                             }
                         },
-                        "evemanueval-nrcan-oee-hd-prod": {
-                            "runAfter": {},
+                        "evemanueval-nrcan-oee-hd-dev": {
+                            "runAfter": {
+                                "Is_Auto_Trigger": [
+                                    "Succeeded"
+                                ]
+                            },
                             "type": "ApiConnection",
                             "inputs": {
                                 "host": {
@@ -1403,11 +1410,15 @@
                                     }
                                 },
                                 "method": "get",
-                                "path": "/secrets/@{encodeURIComponent('evemanueval-nrcan-oee-hd-prod')}/value"
+                                "path": "/secrets/@{encodeURIComponent('evemanueval-nrcan-oee-hd-dev')}/value"
                             }
                         },
-                        "gh-nrcan-oee-hd-prod": {
-                            "runAfter": {},
+                        "gh-nrcan-oee-hd-dev": {
+                            "runAfter": {
+                                "Is_Auto_Trigger": [
+                                    "Succeeded"
+                                ]
+                            },
                             "type": "ApiConnection",
                             "inputs": {
                                 "host": {
@@ -1416,11 +1427,15 @@
                                     }
                                 },
                                 "method": "get",
-                                "path": "/secrets/@{encodeURIComponent('gh-nrcan-oee-hd-prod')}/value"
+                                "path": "/secrets/@{encodeURIComponent('gh-nrcan-oee-hd-dev')}/value"
                             }
                         },
-                        "homeowner-nrcan-oee-hd-prod": {
-                            "runAfter": {},
+                        "homeowner-nrcan-oee-hd-dev": {
+                            "runAfter": {
+                                "Is_Auto_Trigger": [
+                                    "Succeeded"
+                                ]
+                            },
                             "type": "ApiConnection",
                             "inputs": {
                                 "host": {
@@ -1429,7 +1444,7 @@
                                     }
                                 },
                                 "method": "get",
-                                "path": "/secrets/@{encodeURIComponent('homeowner-nrcan-oee-hd-prod')}/value"
+                                "path": "/secrets/@{encodeURIComponent('homeowner-nrcan-oee-hd-dev')}/value"
                             }
                         }
                     },
@@ -1439,14 +1454,14 @@
                     "$connections": {
                         "value": {
                             "keyvault": {
-                                "connectionId": "[parameters('connections_keyvault_1_externalid')]",
-                                "connectionName": "keyvault-1",
+                                "connectionId": "[parameters('connections_keyvault_externalid')]",
+                                "connectionName": "keyvault",
                                 "connectionProperties": {
                                     "authentication": {
                                         "type": "ManagedServiceIdentity"
                                     }
                                 },
-                                "id": "/subscriptions/a5df90be-e869-4159-83c2-db1ae389dce3/providers/Microsoft.Web/locations/canadacentral/managedApis/keyvault"
+                                "id": "/subscriptions/54e15e2b-0be1-4d7d-b9d2-bbd6ffcc370a/providers/Microsoft.Web/locations/canadacentral/managedApis/keyvault"
                             }
                         }
                     }
