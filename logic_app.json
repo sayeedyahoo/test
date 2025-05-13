@@ -1,0 +1,1434 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "contentVersion": "1.0.0.0",
+        "triggers": {
+            "manual": {
+                "type": "Request",
+                "kind": "Http",
+                "inputs": {
+                    "method": "POST",
+                    "schema": {
+                        "properties": {
+                            "adlArchiveContainerName": {
+                                "type": "string"
+                            },
+                            "adlArchiveDirectoryName": {
+                                "type": "string"
+                            },
+                            "adlContainerName": {
+                                "type": "string"
+                            },
+                            "adlDirectoryName": {
+                                "type": "string"
+                            },
+                            "adlLandingContainerName": {
+                                "type": "string"
+                            },
+                            "adlLandingDirectoryName": {
+                                "type": "string"
+                            },
+                            "autoTrigger": {
+                                "type": "boolean"
+                            },
+                            "comments": {
+                                "type": "string"
+                            },
+                            "evaluationFileBatchId": {
+                                "type": "integer"
+                            },
+                            "evaluationFileName": {
+                                "type": "string"
+                            },
+                            "homeOwnerReportDirectory": {
+                                "type": "string"
+                            },
+                            "receivedDirectoryName": {
+                                "type": "string"
+                            },
+                            "receivedEvaluationFileName": {
+                                "type": "string"
+                            },
+                            "submissionType": {
+                                "type": "string"
+                            },
+                            "supportingDocumentDirectory": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object"
+                    }
+                }
+            }
+        },
+        "actions": {
+            "Call_EVE_Validation_Function": {
+                "type": "Http",
+                "inputs": {
+                    "uri": "@variables('Validation URL')",
+                    "method": "POST",
+                    "headers": {
+                        "Content-Type": "application/json",
+                        "Language": "@{triggerOutputs()['headers']['Language']}"
+                    },
+                    "body": {
+                        "ADLLandingContainerName": "@triggerBody()?['adlLandingContainerName']",
+                        "ADLLandingDirectoryName": "@triggerBody()?['adlLandingDirectoryName']",
+                        "Comments": "@triggerBody()?['comments']",
+                        "EvaluationFileBatchId": "@triggerBody()?['evaluationFileBatchId']",
+                        "EvaluationFileName": "@triggerBody()?['evaluationFileName']",
+                        "SubmissionType": "@if(equals(triggerBody()?['submissionType'],'B'),'I',if(equals(triggerBody()?['submissionType'],'SYNC'),'U',triggerBody()?['submissionType']))"
+                    },
+                    "retryPolicy": {
+                        "type": "none"
+                    }
+                },
+                "runAfter": {
+                    "Does_HO_ID_need_to_be_created": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Does_HO_ID_need_to_be_created": {
+                "type": "If",
+                "expression": {
+                    "or": [
+                        {
+                            "equals": [
+                                "@triggerBody()?['submissionType']",
+                                "I"
+                            ]
+                        },
+                        {
+                            "equals": [
+                                "@triggerBody()?['submissionType']",
+                                "U"
+                            ]
+                        },
+                        {
+                            "equals": [
+                                "@triggerBody()?['submissionType']",
+                                "B"
+                            ]
+                        },
+                        {
+                            "equals": [
+                                "@triggerBody()?['submissionType']",
+                                "MU"
+                            ]
+                        }
+                    ]
+                },
+                "actions": {
+                    "Create_HomeOwner_ID_If_Empty": {
+                        "type": "Http",
+                        "inputs": {
+                            "uri": "https://@{parameters('Home Owner API')}.azurewebsites.net/api/HomeOwners/@{split(triggerBody()?['evaluationFileName'],'.')[0]}?code=@{body('homeowner-nrcan-oee-hd-dev')?['value']}",
+                            "method": "POST",
+                            "body": {
+                                "ADLLandingContainerName": "@triggerBody()?['adlLandingContainerName']",
+                                "ADLLandingDirectoryName": "@triggerBody()?['adlLandingDirectoryName']",
+                                "ChannelName": "HOPortal",
+                                "EvaluationFileBatchId": "@triggerBody()?['evaluationFileBatchId']",
+                                "EvaluationFileName": "@triggerBody()?['evaluationFileName']",
+                                "SupportingDocumentDirectory": "@triggerBody()?['supportingDocumentDirectory']"
+                            },
+                            "retryPolicy": {
+                                "type": "none"
+                            }
+                        }
+                    }
+                },
+                "else": {
+                    "actions": {}
+                },
+                "runAfter": {
+                    "Set_Validation_Link": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Initialize_Application_Number_String": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "ApplicationNumber",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Is_Auto_Trigger": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Initialize_Incentive_Recommendations_Response_Array": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "IncentiveRecommendations",
+                            "type": "array"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Is_Auto_Trigger": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Initialize_Incentive_Results_Response_Array": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "IncentiveResults",
+                            "type": "array"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Is_Auto_Trigger": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Initialize_IsApplicationCreation_Boolean": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "IsApplicationCreation",
+                            "type": "boolean",
+                            "value": "@false"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Is_Auto_Trigger": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Initialize_IsEE_Boolean": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "IsEE",
+                            "type": "boolean",
+                            "value": "@false"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Is_Auto_Trigger": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Initialize_IsGH_Boolean": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "IsGH",
+                            "type": "boolean",
+                            "value": "@false"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Is_Auto_Trigger": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Initialize_Response": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "Response",
+                            "type": "object"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Is_Auto_Trigger": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Initialize_Validation_URL_String": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "Validation URL",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Is_Auto_Trigger": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Is_Auto_Trigger": {
+                "type": "If",
+                "expression": {
+                    "and": [
+                        {
+                            "equals": [
+                                "@triggerBody()?['autoTrigger']",
+                                "@true"
+                            ]
+                        }
+                    ]
+                },
+                "actions": {
+                    "201_Async_Response": {
+                        "type": "Response",
+                        "kind": "Http",
+                        "inputs": {
+                            "statusCode": 201,
+                            "body": {}
+                        }
+                    }
+                },
+                "else": {
+                    "actions": {}
+                },
+                "runAfter": {}
+            },
+            "Is_Draft_and_Not_P_OR_N": {
+                "type": "If",
+                "expression": {
+                    "and": [
+                        {
+                            "not": {
+                                "equals": [
+                                    "@toUpper(if(equals(body('Call_EVE_Validation_Function')['data']['evaluation']['evaltype'],null),'',body('Call_EVE_Validation_Function')['data']['evaluation']['evaltype']))",
+                                    "P"
+                                ]
+                            }
+                        },
+                        {
+                            "not": {
+                                "equals": [
+                                    "@toUpper(if(equals(body('Call_EVE_Validation_Function')['data']['evaluation']['evaltype'],null),'',body('Call_EVE_Validation_Function')['data']['evaluation']['evaltype']))",
+                                    "N"
+                                ]
+                            }
+                        },
+                        {
+                            "or": [
+                                {
+                                    "equals": [
+                                        "@body('Call_EVE_Validation_Function')['data']['evaluation']['evaluationstatus']",
+                                        "Draft"
+                                    ]
+                                },
+                                {
+                                    "equals": [
+                                        "@body('Call_EVE_Validation_Function')['data']['evaluation']['evaluationstatus']",
+                                        "Submitted"
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "actions": {
+                    "Is_Application_Creation": {
+                        "type": "If",
+                        "expression": {
+                            "and": [
+                                {
+                                    "or": [
+                                        {
+                                            "startsWith": [
+                                                "@ToLower(body('Call_EVE_Validation_Function')['data']['evaluation']['HouseRegion'])",
+                                                "qu"
+                                            ]
+                                        },
+                                        {
+                                            "startsWith": [
+                                                "@ToLower(body('Call_EVE_Validation_Function')['data']['evaluation']['HouseRegion'])",
+                                                "nova"
+                                            ]
+                                        },
+                                        {
+                                            "startsWith": [
+                                                "@ToLower(body('Call_EVE_Validation_Function')['data']['evaluation']['HouseRegion'])",
+                                                "nouvelle"
+                                            ]
+                                        },
+                                        {
+                                            "startsWith": [
+                                                "@ToLower(body('Call_EVE_Validation_Function')['data']['evaluation']['HouseRegion'])",
+                                                "on"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "actions": {
+                            "Set_IsApplicationCreation": {
+                                "type": "SetVariable",
+                                "inputs": {
+                                    "name": "IsApplicationCreation",
+                                    "value": "@true"
+                                }
+                            }
+                        },
+                        "else": {
+                            "actions": {}
+                        },
+                        "runAfter": {
+                            "Is_EE": [
+                                "Succeeded"
+                            ]
+                        }
+                    },
+                    "Is_D_or_E": {
+                        "type": "If",
+                        "expression": {
+                            "and": [
+                                {
+                                    "equals": [
+                                        "@toUpper(body('Call_EVE_Validation_Function')['data']['fileType'])",
+                                        "D"
+                                    ]
+                                }
+                            ]
+                        },
+                        "actions": {
+                            "Is_not_GH_D": {
+                                "type": "If",
+                                "expression": {
+                                    "and": [
+                                        {
+                                            "equals": [
+                                                "@variables('IsGH')",
+                                                "@false"
+                                            ]
+                                        }
+                                    ]
+                                },
+                                "actions": {
+                                    "Add_Empty_Linking_property_2": {
+                                        "type": "SetVariable",
+                                        "inputs": {
+                                            "name": "Response",
+                                            "value": "@setProperty(body('Call_EVE_Validation_Function'), 'data', addProperty(body('Call_EVE_Validation_Function')['data'], 'ApplicationLinking', null))"
+                                        }
+                                    }
+                                },
+                                "else": {
+                                    "actions": {
+                                        "Add_Linking_Property_From_SF_Call": {
+                                            "type": "SetVariable",
+                                            "inputs": {
+                                                "name": "Response",
+                                                "value": "@setProperty(body('Call_EVE_Validation_Function'), 'data',setProperty(addProperty(body('Call_EVE_Validation_Function')['data'], 'ApplicationLinking',json(body('Call_SF_Linking_For_D'))[0]), 'evaluationIncentiveRecommendations', variables('IncentiveRecommendations')))"
+                                            },
+                                            "runAfter": {
+                                                "Set_Application_Num_for_D": [
+                                                    "Succeeded"
+                                                ]
+                                            }
+                                        },
+                                        "Call_SF_Linking_For_D": {
+                                            "type": "Http",
+                                            "inputs": {
+                                                "uri": "@parameters('SF Linking API URL')",
+                                                "method": "PATCH",
+                                                "queries": {
+                                                    "Subscription-Key": "@parameters('SF Link API Key')"
+                                                },
+                                                "body": {
+                                                    "data": [
+                                                        {
+                                                            "FileNumber": "@body('Call_EVE_Validation_Function')['data']['evaluation']['filenumber']",
+                                                            "IsApplicationCreation": "@variables('IsApplicationCreation')",
+                                                            "applicationId": "@if(greater(length(trim(body('Call_EVE_Validation_Function')['data']['evaluation']['authid'])), 8), '', trim(body('Call_EVE_Validation_Function')['data']['evaluation']['authid']))",
+                                                            "entrydate": "@body('Call_EVE_Validation_Function')['data']['evaluation']['entrydate']",
+                                                            "evaluationIncentiveRecommendations": "@variables('IncentiveRecommendations')",
+                                                            "evaluationIncentiveResults": "@body('Call_EVE_Validation_Function')['data']['evaluationIncentiveResults']",
+                                                            "homeOwnerAddress": "@body('Call_EVE_Validation_Function')['data']['evaluation']['clientaddr']",
+                                                            "homeOwnerCity": "@body('Call_EVE_Validation_Function')['data']['evaluation']['clientcity']",
+                                                            "homeOwnerEmail": "",
+                                                            "homeOwnerFirstName": "@trim(split(body('Call_EVE_Validation_Function')['data']['evaluation']['clientname'], ',')[1])",
+                                                            "homeOwnerID": "@if(greater(length(trim(body('Call_EVE_Validation_Function')['data']['evaluation']['authid'])), 8), trim(body('Call_EVE_Validation_Function')['data']['evaluation']['authid']), '')",
+                                                            "homeOwnerLastName": "@trim(split(body('Call_EVE_Validation_Function')['data']['evaluation']['clientname'], ',')[0])",
+                                                            "homeOwnerPhone": "@body('Call_EVE_Validation_Function')['data']['evaluation']['telephone']",
+                                                            "homeOwnerPostalCode": "@body('Call_EVE_Validation_Function')['data']['evaluation']['clientpcode']",
+                                                            "homeOwnerProvince": "@body('Call_EVE_Validation_Function')['data']['evaluation']['houseregion']",
+                                                            "info2": "@body('Call_EVE_Validation_Function')['data']['evaluation']['infO2']"
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                            "runAfter": {
+                                                "If_Submission_Type_is_equal_to_AU_Or_MO_Or_MA": [
+                                                    "Succeeded"
+                                                ]
+                                            }
+                                        },
+                                        "If_Submission_Type_is_equal_to_AU_Or_MO_Or_MA": {
+                                            "type": "If",
+                                            "expression": {
+                                                "or": [
+                                                    {
+                                                        "equals": [
+                                                            "@triggerBody()?['submissionType']",
+                                                            "AU"
+                                                        ]
+                                                    },
+                                                    {
+                                                        "equals": [
+                                                            "@triggerBody()?['submissionType']",
+                                                            "MO"
+                                                        ]
+                                                    },
+                                                    {
+                                                        "equals": [
+                                                            "@triggerBody()?['submissionType']",
+                                                            "MA"
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            "actions": {
+                                                "Filter_to_recommended_incentives": {
+                                                    "type": "Query",
+                                                    "inputs": {
+                                                        "from": "@body('Get_File_Details')['data'][0]['validationLogs']",
+                                                        "where": "@equals(item()['ruleDefinitionResult'], 'Recommended')"
+                                                    },
+                                                    "runAfter": {
+                                                        "Get_File_Details": [
+                                                            "Succeeded"
+                                                        ]
+                                                    }
+                                                },
+                                                "For_each_Recommendation": {
+                                                    "type": "Foreach",
+                                                    "foreach": "@body('Filter_to_recommended_incentives')",
+                                                    "actions": {
+                                                        "Append_to_reccommendationarray": {
+                                                            "type": "AppendToArrayVariable",
+                                                            "inputs": {
+                                                                "name": "IncentiveRecommendations",
+                                                                "value": {
+                                                                    "Priority": 0,
+                                                                    "RecommendedIncentive": "@items('For_each_Recommendation')['messageEn']"
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    "runAfter": {
+                                                        "Filter_to_recommended_incentives": [
+                                                            "Succeeded"
+                                                        ]
+                                                    }
+                                                },
+                                                "Get_File_Details": {
+                                                    "type": "Http",
+                                                    "inputs": {
+                                                        "uri": "https://@{parameters('ManuEval Function Paramter')}.azurewebsites.net/api/EvaluationResult/@{body('Call_EVE_Validation_Function')['data']['evaluation']['filenumber']}?code=@{body('evemanueval-nrcan-oee-hd-dev')?['value']}",
+                                                        "method": "GET"
+                                                    }
+                                                }
+                                            },
+                                            "else": {
+                                                "actions": {
+                                                    "Set_Recommendations": {
+                                                        "type": "SetVariable",
+                                                        "inputs": {
+                                                            "name": "IncentiveRecommendations",
+                                                            "value": "@body('Call_EVE_Validation_Function')['data']['evaluationIncentiveRecommendations']"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "Set_Application_Num_for_D": {
+                                            "type": "SetVariable",
+                                            "inputs": {
+                                                "name": "ApplicationNumber",
+                                                "value": "@{json(body('Call_SF_Linking_For_D'))[0]['applicationId']}"
+                                            },
+                                            "runAfter": {
+                                                "Call_SF_Linking_For_D": [
+                                                    "Succeeded"
+                                                ]
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "else": {
+                            "actions": {
+                                "Check_if_E_Eval_is_GH": {
+                                    "type": "If",
+                                    "expression": {
+                                        "and": [
+                                            {
+                                                "equals": [
+                                                    "@variables('IsGH')",
+                                                    "@true"
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    "actions": {
+                                        "Call_SF_Linking_For_E_FIle": {
+                                            "type": "Http",
+                                            "inputs": {
+                                                "uri": "@parameters('SF Linking API URL')",
+                                                "method": "PATCH",
+                                                "queries": {
+                                                    "Subscription-Key": "@parameters('SF Link API Key')"
+                                                },
+                                                "body": {
+                                                    "data": [
+                                                        {
+                                                            "FileNumber": "@body('Call_EVE_Validation_Function')['data']['evaluation']['filenumber']",
+                                                            "IsApplicationCreation": "@variables('IsApplicationCreation')",
+                                                            "applicationId": "@if(greater(length(trim(body('Call_EVE_Validation_Function')['data']['evaluation']['authid'])), 8), '', trim(body('Call_EVE_Validation_Function')['data']['evaluation']['authid']))",
+                                                            "entrydate": "@body('Call_EVE_Validation_Function')['data']['evaluation']['entrydate']",
+                                                            "evaluationIncentiveRecommendations": "@body('Call_EVE_Validation_Function')['data']['evaluationIncentiveRecommendations']",
+                                                            "evaluationIncentiveResults": "@body('logic-nrcan-oee-incentive-calculators-dev')['data']",
+                                                            "homeOwnerAddress": "@body('Call_EVE_Validation_Function')['data']['evaluation']['clientaddr']",
+                                                            "homeOwnerCity": "@body('Call_EVE_Validation_Function')['data']['evaluation']['clientcity']",
+                                                            "homeOwnerEmail": "",
+                                                            "homeOwnerFirstName": "@trim(split(body('Call_EVE_Validation_Function')['data']['evaluation']['clientname'], ',')[1])",
+                                                            "homeOwnerID": "@if(greater(length(trim(body('Call_EVE_Validation_Function')['data']['evaluation']['authid'])), 8), trim(body('Call_EVE_Validation_Function')['data']['evaluation']['authid']), '')",
+                                                            "homeOwnerLastName": "@trim(split(body('Call_EVE_Validation_Function')['data']['evaluation']['clientname'], ',')[0])",
+                                                            "homeOwnerPhone": "@body('Call_EVE_Validation_Function')['data']['evaluation']['telephone']",
+                                                            "homeOwnerPostalCode": "@body('Call_EVE_Validation_Function')['data']['evaluation']['clientpcode']",
+                                                            "homeOwnerProvince": "@body('Call_EVE_Validation_Function')['data']['evaluation']['houseregion']",
+                                                            "info2": "@body('Call_EVE_Validation_Function')['data']['evaluation']['infO2']"
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        },
+                                        "Set_Application_number_for_E": {
+                                            "type": "SetVariable",
+                                            "inputs": {
+                                                "name": "ApplicationNumber",
+                                                "value": "@{json(body('Call_SF_Linking_For_E_File'))[0]['applicationId']}"
+                                            },
+                                            "runAfter": {
+                                                "Call_SF_Linking_For_E_FIle": [
+                                                    "Succeeded"
+                                                ]
+                                            }
+                                        },
+                                        "Set_Response_with_EEGH_and_Linking_Responses": {
+                                            "type": "SetVariable",
+                                            "inputs": {
+                                                "name": "Response",
+                                                "value": "@setProperty(body('Call_EVE_Validation_Function'), 'data',setProperty(addProperty(body('Call_EVE_Validation_Function')['data'], 'ApplicationLinking',json(body('Call_SF_Linking_For_E_FIle'))[0]),'evaluationIncentiveResults', variables('IncentiveResults')))"
+                                            },
+                                            "runAfter": {
+                                                "Set_Application_number_for_E": [
+                                                    "Succeeded"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "else": {
+                                        "actions": {
+                                            "Set_E_Response": {
+                                                "type": "SetVariable",
+                                                "inputs": {
+                                                    "name": "Response",
+                                                    "value": "@setProperty(body('Call_EVE_Validation_Function'), 'data',setProperty(addProperty(body('Call_EVE_Validation_Function')['data'], 'ApplicationLinking',null),'evaluationIncentiveResults', variables('IncentiveResults')))"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "runAfter": {
+                                        "Set_Incentive_Results": [
+                                            "Succeeded"
+                                        ]
+                                    }
+                                },
+                                "Set_Incentive_Results": {
+                                    "type": "SetVariable",
+                                    "inputs": {
+                                        "name": "IncentiveResults",
+                                        "value": "@body('logic-nrcan-oee-incentive-calculators-dev')['data']"
+                                    },
+                                    "runAfter": {
+                                        "logic-nrcan-oee-incentive-calculators-dev": [
+                                            "Succeeded"
+                                        ]
+                                    }
+                                },
+                                "logic-nrcan-oee-incentive-calculators-dev": {
+                                    "type": "Workflow",
+                                    "inputs": {
+                                        "host": {
+                                            "workflow": {
+                                                "id": "/subscriptions/54e15e2b-0be1-4d7d-b9d2-bbd6ffcc370a/resourceGroups/nrcan-dev-oee-hd-shared-ca-central/providers/Microsoft.Logic/workflows/logic-nrcan-oee-incentive-calculators-dev"
+                                            },
+                                            "triggerName": "manual"
+                                        },
+                                        "body": {
+                                            "FileNumber": "@{body('Call_EVE_Validation_Function')['data']['evaluation']['filenumber']}",
+                                            "IsEE": "@variables('IsEE')",
+                                            "IsGH": "@variables('IsGH')"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "runAfter": {
+                            "Is_Application_Creation": [
+                                "Succeeded"
+                            ]
+                        }
+                    },
+                    "Is_EE": {
+                        "type": "If",
+                        "expression": {
+                            "and": [
+                                {
+                                    "or": [
+                                        {
+                                            "startsWith": [
+                                                "@ToLower(body('Call_EVE_Validation_Function')['data']['evaluation']['HouseRegion'])",
+                                                "qu"
+                                            ]
+                                        },
+                                        {
+                                            "startsWith": [
+                                                "@ToLower(body('Call_EVE_Validation_Function')['data']['evaluation']['HouseRegion'])",
+                                                "nova"
+                                            ]
+                                        },
+                                        {
+                                            "startsWith": [
+                                                "@ToLower(body('Call_EVE_Validation_Function')['data']['evaluation']['HouseRegion'])",
+                                                "nouvelle"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "actions": {
+                            "Set_IsEE": {
+                                "type": "SetVariable",
+                                "inputs": {
+                                    "name": "IsEE",
+                                    "value": "@true"
+                                }
+                            }
+                        },
+                        "else": {
+                            "actions": {}
+                        },
+                        "runAfter": {
+                            "Is_GH": [
+                                "Succeeded"
+                            ]
+                        }
+                    },
+                    "Is_GH": {
+                        "type": "If",
+                        "expression": {
+                            "and": [
+                                {
+                                    "or": [
+                                        {
+                                            "and": [
+                                                {
+                                                    "startsWith": [
+                                                        "@toUpper(body('Call_EVE_Validation_Function')['data']['evaluation']['AUTHID'])",
+                                                        "AP"
+                                                    ]
+                                                },
+                                                {
+                                                    "equals": [
+                                                        "@length(body('Call_EVE_Validation_Function')['data']['evaluation']['AUTHID'])",
+                                                        8
+                                                    ]
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "equals": [
+                                                "@body('Call_EVE_Validation_Function')['data']['evaluation']['GreenerHomes']",
+                                                "@string(1)"
+                                            ]
+                                        },
+                                        {
+                                            "or": [
+                                                {
+                                                    "startsWith": [
+                                                        "@ToLower(body('Call_EVE_Validation_Function')['data']['evaluation']['HouseRegion'])",
+                                                        "qu"
+                                                    ]
+                                                },
+                                                {
+                                                    "startsWith": [
+                                                        "@ToLower(body('Call_EVE_Validation_Function')['data']['evaluation']['HouseRegion'])",
+                                                        "nova"
+                                                    ]
+                                                },
+                                                {
+                                                    "startsWith": [
+                                                        "@ToLower(body('Call_EVE_Validation_Function')['data']['evaluation']['HouseRegion'])",
+                                                        "nouvelle"
+                                                    ]
+                                                },
+                                                {
+                                                    "startsWith": [
+                                                        "@ToLower(body('Call_EVE_Validation_Function')['data']['evaluation']['HouseRegion'])",
+                                                        "on"
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "actions": {
+                            "Set_IsGH": {
+                                "type": "SetVariable",
+                                "inputs": {
+                                    "name": "IsGH",
+                                    "value": "@true"
+                                }
+                            }
+                        },
+                        "else": {
+                            "actions": {}
+                        }
+                    }
+                },
+                "else": {
+                    "actions": {
+                        "Add_empty_Application_Linking_Property": {
+                            "type": "SetVariable",
+                            "inputs": {
+                                "name": "Response",
+                                "value": "@setProperty(body('Call_EVE_Validation_Function'), 'data', addProperty(body('Call_EVE_Validation_Function')['data'], 'ApplicationLinking', null))"
+                            }
+                        }
+                    }
+                },
+                "runAfter": {
+                    "Call_EVE_Validation_Function": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Is_GH_and_Is_EE": {
+                "type": "If",
+                "expression": {
+                    "and": [
+                        {
+                            "equals": [
+                                "@variables('IsGH')",
+                                "@true"
+                            ]
+                        },
+                        {
+                            "equals": [
+                                "@variables('IsApplicationCreation')",
+                                "@true"
+                            ]
+                        }
+                    ]
+                },
+                "actions": {
+                    "Link_Evaluation_To_Application": {
+                        "type": "Http",
+                        "inputs": {
+                            "uri": "https://@{parameters('ManuEval Function Paramter')}.azurewebsites.net/api/LinkToApplication?code=@{body('evemanueval-nrcan-oee-hd-dev')?['value']}",
+                            "method": "PATCH",
+                            "body": {
+                                "ApplicationNumber": "@variables('ApplicationNumber')",
+                                "FileNumber": "@body('Call_EVE_Validation_Function')['data']['evaluation']['filenumber']",
+                                "ProgramName": "@{body('Call_EVE_Validation_Function')['data']['Evaluation']['programName']}"
+                            }
+                        }
+                    },
+                    "Link_Home_Owner_To_Application": {
+                        "type": "Http",
+                        "inputs": {
+                            "uri": "https://@{parameters('Home Owner API')}.azurewebsites.net/api/HomeOwners/LinkToApplication/@{split(triggerBody()?['evaluationFileName'],'.')[0]}/?code=@{body('homeowner-nrcan-oee-hd-dev')?['value']}",
+                            "method": "PATCH",
+                            "body": {
+                                "HomeOwnerId": "@body('Call_EVE_Validation_Function')['data']['evaluation']['AUTHID']",
+                                "SupplementaryId": "@variables('ApplicationNumber')",
+                                "TransactionChannel": "HOPortal"
+                            }
+                        },
+                        "runAfter": {
+                            "Link_Evaluation_To_Application": [
+                                "Succeeded"
+                            ]
+                        }
+                    }
+                },
+                "else": {
+                    "actions": {}
+                },
+                "runAfter": {
+                    "Is_Draft_and_Not_P_OR_N": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Only_if_Submission_Type_not_equal_to_U": {
+                "type": "If",
+                "expression": {
+                    "and": [
+                        {
+                            "not": {
+                                "equals": [
+                                    "@triggerBody()?['submissionType']",
+                                    "U"
+                                ]
+                            }
+                        },
+                        {
+                            "not": {
+                                "equals": [
+                                    "@triggerBody()?['submissionType']",
+                                    "MU"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "actions": {
+                    "Move_All_Files_from_Landing_Container": {
+                        "type": "Workflow",
+                        "inputs": {
+                            "host": {
+                                "workflow": {
+                                    "id": "/subscriptions/54e15e2b-0be1-4d7d-b9d2-bbd6ffcc370a/resourceGroups/nrcan-dev-oee-hd-shared-ca-central/providers/Microsoft.Logic/workflows/logic-nrcan-oee-file-management-dev"
+                                },
+                                "triggerName": "manual"
+                            },
+                            "body": {
+                                "adlArchiveContainerName": "@triggerBody()?['adlArchiveContainerName']",
+                                "adlArchiveDirectoryName": "@triggerBody()?['adlArchiveDirectoryName']",
+                                "adlContainerName": "@triggerBody()?['adlContainerName']",
+                                "adlDirectoryName": "@triggerBody()?['adlDirectoryName']",
+                                "adlLandingContainerName": "@triggerBody()?['adlLandingContainerName']",
+                                "adlLandingDirectoryName": "@triggerBody()?['adlLandingDirectoryName']",
+                                "evaluationFileBatchId": "@triggerBody()?['evaluationFileBatchId']",
+                                "evaluationFileName": "@triggerBody()?['evaluationFileName']",
+                                "homeOwnerReportDirectory": "@triggerBody()?['homeOwnerReportDirectory']",
+                                "receivedDirectoryName": "@triggerBody()?['receivedDirectoryName']",
+                                "receivedEvaluationFileName": "@triggerBody()?['receivedEvaluationFileName']",
+                                "submissionType": "@triggerBody()?['submissionType']",
+                                "supportingDocumentDirectory": "@triggerBody()?['supportingDocumentDirectory']"
+                            }
+                        }
+                    }
+                },
+                "else": {
+                    "actions": {}
+                },
+                "runAfter": {
+                    "Call_EVE_Validation_Function": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Reject_Corresponding_E_or_N_if_Updating_D_or_P": {
+                "type": "If",
+                "expression": {
+                    "and": [
+                        {
+                            "equals": [
+                                "@triggerBody()?['submissionType']",
+                                "U"
+                            ]
+                        },
+                        {
+                            "or": [
+                                {
+                                    "equals": [
+                                        "@toUpper(body('Call_EVE_Validation_Function')['data']['evaluation']['evaltype'])",
+                                        "D"
+                                    ]
+                                },
+                                {
+                                    "equals": [
+                                        "@toUpper(body('Call_EVE_Validation_Function')['data']['evaluation']['evaltype'])",
+                                        "P"
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "actions": {
+                    "Update_Linked_Evaluation_Status": {
+                        "type": "Http",
+                        "inputs": {
+                            "uri": "https://evemanueval-nrcan-oee-hd-dev.azurewebsites.net/api/LinkedEvaluationStatus?code=@{body('evemanueval-nrcan-oee-hd-dev')?['value']}",
+                            "method": "PATCH",
+                            "headers": {
+                                "Content-Type": "application/json"
+                            },
+                            "body": {
+                                "FileNumber": "@body('Call_EVE_Validation_Function')['data']['evaluation']['FileNumber']"
+                            }
+                        }
+                    }
+                },
+                "else": {
+                    "actions": {}
+                },
+                "runAfter": {
+                    "Is_Draft_and_Not_P_OR_N": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Respond_on_if_AutoTrigger_is_False": {
+                "type": "If",
+                "expression": {
+                    "and": [
+                        {
+                            "equals": [
+                                "@triggerBody()?['autoTrigger']",
+                                "@true"
+                            ]
+                        }
+                    ]
+                },
+                "actions": {
+                    "Is_Draft_E_or_N_Eval": {
+                        "type": "If",
+                        "expression": {
+                            "and": [
+                                {
+                                    "or": [
+                                        {
+                                            "equals": [
+                                                "@toUpper(body('Call_EVE_Validation_Function')['data']['evaluation']['evaltype'])",
+                                                "E"
+                                            ]
+                                        },
+                                        {
+                                            "equals": [
+                                                "@toUpper(body('Call_EVE_Validation_Function')['data']['evaluation']['evaltype'])",
+                                                "P"
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "equals": [
+                                        "@body('Call_EVE_Validation_Function')['data']['evaluation']['evaluationstatus']",
+                                        "Draft"
+                                    ]
+                                },
+                                {
+                                    "equals": [
+                                        "@triggerBody()?['submissionType']",
+                                        "U"
+                                    ]
+                                }
+                            ]
+                        },
+                        "actions": {
+                            "Call_Accepted_Update_for_Auto_trigger_only": {
+                                "type": "Http",
+                                "inputs": {
+                                    "uri": "https://@{parameters('Rule Function Name')}.azurewebsites.net/api/EVEUpdateAcceptedSubmission?code=@{body('eve-nrcan-oee-hd-dev')?['value']}",
+                                    "method": "POST",
+                                    "headers": {
+                                        "Content-Type": "application/json",
+                                        "Language": "@{triggerOutputs()['headers']['Language']}"
+                                    },
+                                    "body": {
+                                        "ADLLandingContainerName": "@triggerBody()?['adlLandingContainerName']",
+                                        "ADLLandingDirectoryName": "@triggerBody()?['adlLandingDirectoryName']",
+                                        "EvaluationFileBatchId": "@body('Call_EVE_Validation_Function')['data']['evaluationFileBatchId']",
+                                        "EvaluationFileName": "@triggerBody()?['evaluationFileName']",
+                                        "SubmissionType": "AU"
+                                    }
+                                }
+                            },
+                            "Is_E_File": {
+                                "type": "If",
+                                "expression": {
+                                    "and": [
+                                        {
+                                            "equals": [
+                                                "@toUpper(body('Call_EVE_Validation_Function')['data']['evaluation']['evaltype'])",
+                                                "E"
+                                            ]
+                                        }
+                                    ]
+                                },
+                                "actions": {
+                                    "logic-nrcan-oee-incentive-calculators-dev_Auto_Trigger": {
+                                        "type": "Workflow",
+                                        "inputs": {
+                                            "host": {
+                                                "workflow": {
+                                                    "id": "/subscriptions/54e15e2b-0be1-4d7d-b9d2-bbd6ffcc370a/resourceGroups/nrcan-dev-oee-hd-shared-ca-central/providers/Microsoft.Logic/workflows/logic-nrcan-oee-incentive-calculators-dev"
+                                                },
+                                                "triggerName": "manual"
+                                            },
+                                            "body": {
+                                                "FileNumber": "@{body('Call_EVE_Validation_Function')['data']['evaluation']['filenumber']}",
+                                                "IsEE": "@variables('IsEE')",
+                                                "IsGH": "@variables('IsGH')"
+                                            }
+                                        }
+                                    }
+                                },
+                                "else": {
+                                    "actions": {}
+                                },
+                                "runAfter": {
+                                    "Call_Accepted_Update_for_Auto_trigger_only": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            },
+                            "Move_All_Files_for_Auto_Trigger": {
+                                "type": "Workflow",
+                                "inputs": {
+                                    "host": {
+                                        "workflow": {
+                                            "id": "/subscriptions/54e15e2b-0be1-4d7d-b9d2-bbd6ffcc370a/resourceGroups/nrcan-dev-oee-hd-shared-ca-central/providers/Microsoft.Logic/workflows/logic-nrcan-oee-file-management-dev"
+                                        },
+                                        "triggerName": "manual"
+                                    },
+                                    "body": {
+                                        "adlArchiveContainerName": "@triggerBody()?['adlArchiveContainerName']",
+                                        "adlArchiveDirectoryName": "@triggerBody()?['adlArchiveDirectoryName']",
+                                        "adlContainerName": "@triggerBody()?['adlContainerName']",
+                                        "adlDirectoryName": "@triggerBody()?['adlDirectoryName']",
+                                        "adlLandingContainerName": "@triggerBody()?['adlLandingContainerName']",
+                                        "adlLandingDirectoryName": "@triggerBody()?['adlLandingDirectoryName']",
+                                        "evaluationFileName": "@triggerBody()?['evaluationFileName']",
+                                        "homeOwnerReportDirectory": "@triggerBody()?['homeOwnerReportDirectory']",
+                                        "receivedDirectoryName": "@triggerBody()?['receivedDirectoryName']",
+                                        "receivedEvaluationFileName": "@triggerBody()?['receivedEvaluationFileName']",
+                                        "submissionType": "AU",
+                                        "supportingDocumentDirectory": "@triggerBody()?['supportingDocumentDirectory']"
+                                    }
+                                },
+                                "runAfter": {
+                                    "Is_E_File": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            }
+                        },
+                        "else": {
+                            "actions": {}
+                        }
+                    }
+                },
+                "else": {
+                    "actions": {
+                        "Full_Response": {
+                            "type": "Response",
+                            "kind": "Http",
+                            "inputs": {
+                                "statusCode": 201,
+                                "headers": {
+                                    "Content-Type": "application/json",
+                                    "Language": "@{triggerOutputs()['headers']['Language']}"
+                                },
+                                "body": "@variables('Response')"
+                            }
+                        }
+                    }
+                },
+                "runAfter": {
+                    "Reject_Corresponding_E_or_N_if_Updating_D_or_P": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Set_Validation_Link": {
+                "type": "Switch",
+                "expression": "@triggerBody()?['submissionType']",
+                "default": {
+                    "actions": {}
+                },
+                "cases": {
+                    "Case_SubmissionType_I": {
+                        "actions": {
+                            "Set_Validation_URL_I": {
+                                "type": "SetVariable",
+                                "inputs": {
+                                    "name": "Validation URL",
+                                    "value": "https://@{parameters('Rule Function Name')}.azurewebsites.net/api/EVEInitialSubmission?code=@{body('eve-nrcan-oee-hd-dev')?['value']}"
+                                }
+                            }
+                        },
+                        "case": "I"
+                    },
+                    "Case_Submission_Type_AU": {
+                        "actions": {
+                            "Set_Validation_URL_AU": {
+                                "type": "SetVariable",
+                                "inputs": {
+                                    "name": "Validation URL",
+                                    "value": "https://@{parameters('Rule Function Name')}.azurewebsites.net/api/EVEUpdateAcceptedSubmission?code=@{body('eve-nrcan-oee-hd-dev')?['value']}"
+                                }
+                            }
+                        },
+                        "case": "AU"
+                    },
+                    "Case_Submission_Type_B": {
+                        "actions": {
+                            "Set_Validation_URL_B": {
+                                "type": "SetVariable",
+                                "inputs": {
+                                    "name": "Validation URL",
+                                    "value": "https://@{parameters('Rule Function Name')}.azurewebsites.net/api/EVEInitialSubmission?code=@{body('eve-nrcan-oee-hd-dev')?['value']}"
+                                }
+                            }
+                        },
+                        "case": "B"
+                    },
+                    "Case_Submission_Type_MA": {
+                        "actions": {
+                            "Set_Validation_URL_MA": {
+                                "type": "SetVariable",
+                                "inputs": {
+                                    "name": "Validation URL",
+                                    "value": "https://@{parameters('ManuEval Function Paramter')}.azurewebsites.net/api/EVEUpdateAcceptedSubmission?code=@{body('evemanueval-nrcan-oee-hd-dev')?['value']}"
+                                }
+                            }
+                        },
+                        "case": "MA"
+                    },
+                    "Case_Submission_Type_MO": {
+                        "actions": {
+                            "Set_Validation_URL_MO": {
+                                "type": "SetVariable",
+                                "inputs": {
+                                    "name": "Validation URL",
+                                    "value": "https://@{parameters('ManuEval Function Paramter')}.azurewebsites.net/api/EVEMUpdateOverrideSubmission?code=@{body('evemanueval-nrcan-oee-hd-dev')?['value']}"
+                                }
+                            }
+                        },
+                        "case": "MO"
+                    },
+                    "Case_Submission_Type_MR": {
+                        "actions": {
+                            "Set_Validation_URL_MR": {
+                                "type": "SetVariable",
+                                "inputs": {
+                                    "name": "Validation URL",
+                                    "value": "https://@{parameters('ManuEval Function Paramter')}.azurewebsites.net/api/EVEMInitialSubmission?code=@{body('evemanueval-nrcan-oee-hd-dev')?['value']}"
+                                }
+                            }
+                        },
+                        "case": "MR"
+                    },
+                    "Case_Submission_Type_MU": {
+                        "actions": {
+                            "Set_Validation_URL_MU": {
+                                "type": "SetVariable",
+                                "inputs": {
+                                    "name": "Validation URL",
+                                    "value": "https://@{parameters('ManuEval Function Paramter')}.azurewebsites.net/api/EVEUpdateSubmission?code=@{body('evemanueval-nrcan-oee-hd-dev')?['value']}"
+                                }
+                            }
+                        },
+                        "case": "MU"
+                    },
+                    "Case_Submission_Type_U": {
+                        "actions": {
+                            "Set_Validation_URL_U": {
+                                "type": "SetVariable",
+                                "inputs": {
+                                    "name": "Validation URL",
+                                    "value": "https://@{parameters('Rule Function Name')}.azurewebsites.net/api/EVEUpdateSubmission?code=@{body('eve-nrcan-oee-hd-dev')?['value']}"
+                                }
+                            }
+                        },
+                        "case": "U"
+                    }
+                },
+                "runAfter": {
+                    "Initialize_Application_Number_String": [
+                        "Succeeded"
+                    ],
+                    "Initialize_Incentive_Recommendations_Response_Array": [
+                        "Succeeded"
+                    ],
+                    "Initialize_Incentive_Results_Response_Array": [
+                        "Succeeded"
+                    ],
+                    "Initialize_IsApplicationCreation_Boolean": [
+                        "Succeeded"
+                    ],
+                    "Initialize_IsEE_Boolean": [
+                        "Succeeded"
+                    ],
+                    "Initialize_IsGH_Boolean": [
+                        "Succeeded"
+                    ],
+                    "Initialize_Response": [
+                        "Succeeded"
+                    ],
+                    "Initialize_Validation_URL_String": [
+                        "Succeeded"
+                    ],
+                    "eve-nrcan-oee-hd-dev": [
+                        "Succeeded"
+                    ],
+                    "evemanueval-nrcan-oee-hd-dev": [
+                        "Succeeded"
+                    ],
+                    "gh-nrcan-oee-hd-dev": [
+                        "Succeeded"
+                    ],
+                    "homeowner-nrcan-oee-hd-dev": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "eve-nrcan-oee-hd-dev": {
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['keyvault']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/secrets/@{encodeURIComponent('eve-nrcan-oee-hd-dev')}/value"
+                },
+                "runAfter": {
+                    "Is_Auto_Trigger": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "evemanueval-nrcan-oee-hd-dev": {
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['keyvault']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/secrets/@{encodeURIComponent('evemanueval-nrcan-oee-hd-dev')}/value"
+                },
+                "runAfter": {
+                    "Is_Auto_Trigger": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "gh-nrcan-oee-hd-dev": {
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['keyvault']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/secrets/@{encodeURIComponent('gh-nrcan-oee-hd-dev')}/value"
+                },
+                "runAfter": {
+                    "Is_Auto_Trigger": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "homeowner-nrcan-oee-hd-dev": {
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['keyvault']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/secrets/@{encodeURIComponent('homeowner-nrcan-oee-hd-dev')}/value"
+                },
+                "runAfter": {
+                    "Is_Auto_Trigger": [
+                        "Succeeded"
+                    ]
+                }
+            }
+        },
+        "outputs": {},
+        "parameters": {
+            "Home Owner API": {
+                "defaultValue": "homeowner-nrcan-oee-hd-dev",
+                "type": "String"
+            },
+            "Incentive Calculator Function": {
+                "defaultValue": "gh-nrcan-oee-hd-dev",
+                "type": "String"
+            },
+            "ManuEval Function Paramter": {
+                "defaultValue": "evemanueval-nrcan-oee-hd-dev",
+                "type": "String"
+            },
+            "Rule Function Name": {
+                "defaultValue": "eve-nrcan-oee-hd-dev",
+                "type": "String"
+            },
+            "SF Link API Key": {
+                "defaultValue": "ad8bc91f4fb14260bbb28824697794cc",
+                "type": "String"
+            },
+            "SF Linking API URL": {
+                "defaultValue": "https://apim-nrcan-oee-hd-dev.azure-api.net/evaluations/link",
+                "type": "String"
+            },
+            "$connections": {
+                "type": "Object",
+                "defaultValue": {}
+            }
+        }
+    },
+    "parameters": {
+        "$connections": {
+            "type": "Object",
+            "value": {
+                "keyvault": {
+                    "id": "/subscriptions/54e15e2b-0be1-4d7d-b9d2-bbd6ffcc370a/providers/Microsoft.Web/locations/canadacentral/managedApis/keyvault",
+                    "connectionId": "/subscriptions/54e15e2b-0be1-4d7d-b9d2-bbd6ffcc370a/resourceGroups/nrcan-dev-oee-hd-shared-ca-central/providers/Microsoft.Web/connections/keyvault",
+                    "connectionName": "keyvault",
+                    "connectionProperties": {
+                        "authentication": {
+                            "type": "ManagedServiceIdentity"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
